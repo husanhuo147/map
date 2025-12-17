@@ -6,12 +6,52 @@
     <title>圣安德烈斯市 互动狩猎地图</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
-        body { margin:0; padding:0; background:#000; overflow:hidden; }
-        #map { height: 100vh; width: 100vw; }
-        .blue-label div { background:#007bff !important; color:white; padding:10px 22px; border-radius:30px; font-size:17px; font-weight:bold; box-shadow:0 4px 20px rgba(0,123,255,0.8); white-space:nowrap; }
-        .red-area { color:red; weight:6; opacity:0.8; fillOpacity:0; }
-        .my-position div { background:red; width:30px; height:30px; border-radius:50%; border:5px solid white; animation:pulse 2s infinite; }
-        @keyframes pulse { 0% { box-shadow:0 0 0 0 rgba(255,0,0,0.7); } 70% { box-shadow:0 0 0 25px rgba(255,0,0,0); } 100% { box-shadow:0 0 0 0 rgba(255,0,0,0); } }
+        body { margin:0; padding:0; background:#000814; overflow:hidden; }
+        #map { height: 100vh; width: 100vw; filter: brightness(0.9) contrast(1.2); }
+
+        /* 科幻蓝色标签 - 发光半透明 */
+        .sci-fi-label div {
+            background: rgba(50, 120, 255, 0.35) !important;
+            color: #e0f2ff !important;
+            padding: 12px 28px !important;
+            border-radius: 12px !important;
+            font-size: 19px !important;
+            font-weight: bold !important;
+            white-space: nowrap;
+            border: 1px solid #5eb8ff;
+            box-shadow: 0 0 20px rgba(80, 160, 255, 0.8), inset 0 0 10px rgba(100, 180, 255, 0.3);
+            backdrop-filter: blur(4px);
+            text-shadow: 0 0 8px #5eb8ff;
+        }
+
+        /* 你在这儿 - 红色高亮脉冲 */
+        .my-position div {
+            background: radial-gradient(circle, #ff3366, #cc0033);
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border: 4px solid #ff6699;
+            box-shadow: 0 0 30px #ff3366, 0 0 50px #ff0033;
+            animation: pulse-red 1.8s infinite;
+        }
+        @keyframes pulse-red {
+            0% { box-shadow: 0 0 0 0 rgba(255,51,102,0.8); }
+            70% { box-shadow: 0 0 0 30px rgba(255,51,102,0); }
+            100% { box-shadow: 0 0 0 0 rgba(255,51,102,0); }
+        }
+
+        /* 手绘红色箭头和圈 */
+        .hand-arrow { color: #ff3366; weight: 9; opacity: 0.9; lineCap: round; }
+        .hand-circle { color: #ff3366; weight: 8; opacity: 0.85; fillOpacity: 0; dashArray: "15,12"; }
+
+        /* 地点发光图标（蓝光盾牌） */
+        .location-icon {
+            background: radial-gradient(circle, #4488ff, #2266cc);
+            width: 30px; height: 30px;
+            border-radius: 50%;
+            border: 3px solid #88ccff;
+            box-shadow: 0 0 25px #4488ff;
+        }
     </style>
 </head>
 <body>
@@ -20,78 +60,88 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://unpkg.com/leaflet-arrowheads@1.3.0/dist/leaflet-arrowheads.min.js"></script>
     <script>
-        // 圣安德烈斯市中心坐标（虚构布局）
         const map = L.map('map').setView([34.0522, -118.2437], 11);
 
+        // 更深邃的暗色底图
         L.tileLayer('https://api.mapbox.com/styles/v1/mapbox/dark-v11/tiles/{z}/{x}/{y}?access_token=pk.eyJ1IjoibWFwYm94IiwiYSI6ImNpejY4NXVycTA2emYycXBndHRqcmZ3N3gifQ.rJcFIG214AriISLbB6B5aw', {
             attribution: 'Mapbox'
         }).addTo(map);
 
-        // 当前位置标记
-        const myPosition = L.marker([34.0736, -118.4004], { // 默认起始：贝弗利山庄
+        // 你在这儿（默认贝弗利山庄）
+        const myPosition = L.marker([34.0736, -118.4004], {
             icon: L.divIcon({
                 className: 'my-position',
-                html: '<div></div><div style="color:white; margin-top:10px; font-size:20px; text-shadow:0 0 10px red;"><b>你在这儿</b></div>',
-                iconSize: [50, 70],
-                iconAnchor: [25, 70]
+                html: '<div></div><div style="color:#ffcccc; margin-top:12px; font-size:22px; text-shadow:0 0 15px red;"><b>你在这儿</b></div>',
+                iconSize: [70, 90],
+                iconAnchor: [35, 90]
             })
         }).addTo(map).bindPopup("当前位置").openPopup();
 
-        // 所有区域坐标与名称（可根据想象微调）
         const locations = {
-            // 贝弗利山庄区域
-            "beverly":          [34.0736, -118.4004, "贝弗利山庄"], 
-            "cloud_mansion":    [34.0800, -118.4100, "云顶豪宅区"],
-            "rodeo_drive":      [34.0690, -118.4020, "罗迪欧购物街"],
-            "velvet_club":      [34.0750, -118.3950, "天鹅绒俱乐部"],
-
-            // 枫叶大道区域
-            "maple_ave":        [34.1000, -118.3000, "枫叶大道"],
-            "tree_community":   [34.1050, -118.2900, "树社区"],
-            "community_mall":   [34.0950, -118.3100, "社区购物中心"],
-            "municipal_park":   [34.1100, -118.3050, "市政公园"],
-
-            // 圣玛丽学区
-            "st_mary":          [34.0200, -118.2800, "圣玛丽学区"],
-            "st_mary_school":   [34.0180, -118.2750, "圣玛丽女子高中"],
-            "uni_apartments":   [34.0250, -118.2850, "大学城公寓"],
-            "library":          [34.0220, -118.2780, "学术图书馆"],
-
-            // 霓虹街区域
-            "neon_street":      [33.9800, -118.2400, "霓虹街"],
-            "red_light":        [33.9750, -118.2350, "红灯区主街"],
-            "abandoned_ind":    [33.9700, -118.2500, "废弃工业区"],
-            "underground_market":[33.9850, -118.2450, "地下黑市"]
+            "beverly": [34.0736, -118.4004, "贝弗利山庄"],
+            "cloud_mansion": [34.0800, -118.4100, "云顶豪宅区"],
+            "rodeo_drive": [34.0690, -118.4020, "罗迪欧购物街"],
+            "velvet_club": [34.0750, -118.3950, "天鹅绒俱乐部"],
+            "maple_ave": [34.1000, -118.3000, "枫叶大道"],
+            "tree_community": [34.1050, -118.2900, "树社区"],
+            "community_mall": [34.0950, -118.3100, "社区购物中心"],
+            "municipal_park": [34.1100, -118.3050, "市政公园"],
+            "st_mary": [34.0200, -118.2800, "圣玛丽学区"],
+            "st_mary_school": [34.0180, -118.2750, "圣玛丽女子高中"],
+            "uni_apartments": [34.0250, -118.2850, "大学城公寓"],
+            "library": [34.0220, -118.2780, "学术图书馆"],
+            "neon_street": [33.9800, -118.2400, "霓虹街"],
+            "red_light": [33.9750, -118.2350, "红灯区主街"],
+            "abandoned_ind": [33.9700, -118.2500, "废弃工业区"],
+            "underground_market": [33.9850, -118.2450, "地下黑市"]
         };
 
-        // 添加蓝色气泡标签
-        function addBlueLabel(key) {
+        // 添加科幻蓝色标签
+        function addSciFiLabel(key) {
             const [lat, lng, text] = locations[key];
             L.marker([lat, lng], {
                 icon: L.divIcon({
-                    className: 'blue-label',
-                    html: `<div>${text} →</div>`,
-                    iconSize: [null, null]
+                    className: 'sci-fi-label',
+                    html: `<div>${text}</div>`,
+                    iconSize: [null, null],
+                    iconAnchor: [10, 0]
                 })
             }).addTo(map);
         }
+        Object.keys(locations).forEach(addSciFiLabel);
 
-        // 初始显示所有主要区域标签
-        Object.keys(locations).forEach(addBlueLabel);
+        // 添加发光地点图标
+        Object.keys(locations).forEach(key => {
+            const [lat, lng] = locations[key];
+            L.marker([lat, lng], {
+                icon: L.divIcon({
+                    className: 'location-icon',
+                    html: '<div></div>',
+                    iconSize: [40, 40],
+                    iconAnchor: [20, 20]
+                })
+            }).addTo(map);
+        });
 
-        // 用红色粗线圈出四大主区域
-        L.circle(locations["beverly"][0], locations["beverly"][1], {radius: 6000, className: 'red-area'}).addTo(map);
-        L.circle(locations["maple_ave"][0], locations["maple_ave"][1], {radius: 5000, className: 'red-area'}).addTo(map);
-        L.circle(locations["st_mary"][0], locations["st_mary"][1], {radius: 4000, className: 'red-area'}).addTo(map);
-        L.circle(locations["neon_street"][0], locations["neon_street"][1], {radius: 5500, className: 'red-area'}).addTo(map);
+        // 手绘红色圈（四个主区域）
+        L.circle([34.0736, -118.4004], {radius: 6500, className: 'hand-circle'}).addTo(map);
+        L.circle([34.1000, -118.3000], {radius: 5500, className: 'hand-circle'}).addTo(map);
+        L.circle([34.0200, -118.2800], {radius: 4500, className: 'hand-circle'}).addTo(map);
+        L.circle([33.9800, -118.2400], {radius: 6000, className: 'hand-circle'}).addTo(map);
 
-        // 读取 URL 参数自动移动
+        // 手绘红色箭头指向重点区域（模仿图片）
+        L.polyline([[34.15, -118.50], [34.0736, -118.4004]], {className: 'hand-arrow'}).arrowheads({size: '35px', fillOpacity: 1, yawn: 60}).addTo(map);
+        L.polyline([[34.15, -118.25], [34.1000, -118.3000]], {className: 'hand-arrow'}).arrowheads({size: '35px', fillOpacity: 1, yawn: 60}).addTo(map);
+        L.polyline([[34.00, -118.20], [33.9800, -118.2400]], {className: 'hand-arrow'}).arrowheads({size: '35px', fillOpacity: 1, yawn: 60}).addTo(map);
+        L.polyline([[34.05, -118.15], [33.9750, -118.2350]], {className: 'hand-arrow'}).arrowheads({size: '35px', fillOpacity: 1, yawn: 60}).addTo(map);
+
+        // URL 参数移动（SillyTavern 正则兼容）
         const urlParams = new URLSearchParams(window.location.search);
         const locKey = urlParams.get('loc');
         if (locKey && locations[locKey]) {
             const [lat, lng, name] = locations[locKey];
             myPosition.setLatLng([lat, lng]);
-            map.flyTo([lat, lng], 13, { duration: 2.5 });
+            map.flyTo([lat, lng], 13, { duration: 3.5 });
             myPosition.bindPopup(`已到达：${name}`).openPopup();
         }
     </script>
